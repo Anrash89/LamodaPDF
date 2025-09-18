@@ -3,120 +3,237 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Стикер-PDF Fix</title>
+  <title>Стикер-PDF Fix — «Изготовитель»</title>
   <style>
-    :root { --bg:#0f172a; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; }
-    body{margin:0;font:15px/1.4 system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-    header{padding:14px 18px;background:#0b1220;position:sticky;top:0;z-index:5;border-bottom:1px solid #1f2937}
-    h1{margin:0;font-size:17px}
-    .wrap{max-width:1000px;margin:0 auto;padding:14px}
-    .row{display:grid;grid-template-columns:1fr;gap:14px}
-    @media(min-width:800px){.row{grid-template-columns:1.1fr .9fr}}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
-    .card h2{margin:0 0 10px;font-size:15px}
-    textarea{width:100%;padding:8px;border-radius:10px;border:1px solid #30363d;background:#0d1322;color:#e5e7eb;min-height:70px}
-    .btn{background:var(--accent);color:#00111f;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .drop{border:2px dashed #374151;border-radius:14px;padding:16px;text-align:center;color:#9ca3af}
-    .drop.drag{border-color:#60a5fa;background:rgba(96,165,250,.06)}
-    .small{font-size:12px;color:#9ca3af}
-    .preview{max-height:280px;overflow:hidden;border:1px dashed #374151;border-radius:12px;padding:6px;background:#0b1220;text-align:center;cursor:pointer}
-    .footer{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .pill{background:#0b1220;border:1px solid #1f2937;border-radius:999px;padding:6px 10px;color:#9ca3af;font-size:12px}
-    canvas{max-width:100%;height:auto}
-    #modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;z-index:9999}
-    #modal canvas{max-width:95%;max-height:95%;box-shadow:0 0 20px black}
+    :root{--bg:#0b1220;--panel:#0e1627;--ink:#e8edf3;--muted:#9fb0c3;--line:#1f2a3b;--accent:#59a7ff}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;z-index:5;background:#081222;border-bottom:1px solid var(--line)}
+    header .wrap{display:flex;align-items:center;gap:10px;padding:14px 16px}
+    h1{margin:0;font-size:16px}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .layout{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:900px){.layout{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    .drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted)}
+    .drop.drag{border-color:var(--accent);background:rgba(89,167,255,.07)}
+    .btn{appearance:none;background:var(--accent);color:#001225;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    input[type=file],textarea,input[type=text]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0b1426;color:var(--ink)}
+    .muted{color:var(--muted);font-size:12px}
+    .inline{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{background:#0b1426;border:1px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--muted)}
+    .previewBox{border:1px dashed var(--line);border-radius:12px;background:#0b1426;padding:8px;display:flex;justify-content:center;align-items:center;min-height:220px}
+    canvas{max-width:100%;height:auto;cursor:zoom-in}
+    /* Лайтбокс */
+    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50}
+    .lightbox.show{display:flex}
+    .lightbox canvas{max-width:96vw;max-height:92vh;cursor:zoom-out;border-radius:8px}
+    .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+    .fileCard{background:#0b1426;border:1px solid var(--line);border-radius:10px;padding:10px}
+    .fileCard a{display:inline-block;margin-top:6px}
   </style>
 </head>
 <body>
 <header>
-  <h1>Стикер-PDF Fix — замена «Изготовитель»</h1>
+  <div class="wrap">
+    <h1>Стикер-PDF Fix — замена «Изготовитель» (локально, GitHub Pages)</h1>
+  </div>
 </header>
+
 <div class="wrap">
-  <div class="row">
+  <div class="layout">
     <section class="card">
       <h2>1) Загрузите PDF-стикеры</h2>
-      <div id="drop" class="drop">Перетащите PDF сюда или <label for="file" style="color:#60a5fa;cursor:pointer">выберите…</label>
+      <div id="drop" class="drop">Перетащите PDF сюда или <label for="file" style="text-decoration:underline;cursor:pointer">выберите…</label>
         <input id="file" type="file" accept="application/pdf" multiple style="display:none" />
       </div>
-      <h2 style="margin-top:14px">2) Новый текст</h2>
-      <textarea id="text">Изготовитель: Guangzhou Anrong Trading Co., Ltd. Китай, Room 2310A, 23F, No. 179, Tianhe North Road, Tianhe District, Guangzhou</textarea>
-      <div class="footer">
-        <button id="run" class="btn" disabled>Обработать и скачать PDF</button>
+
+      <h2 style="margin-top:10px">2) Новый текст</h2>
+      <textarea id="text" spellcheck="false">Изготовитель: Guangzhou Anrong Trading Co., Ltd. Китай, Room 2310A, 23F, No. 179, Tianhe North Road, Tianhe District, Guangzhou</textarea>
+
+      <div class="inline" style="margin-top:10px">
+        <button id="run" class="btn" disabled>Обработать</button>
         <span id="status" class="pill">Файлы не загружены</span>
       </div>
+
+      <details style="margin-top:10px">
+        <summary>Дополнительно (отступы & шрифт)</summary>
+        <div class="inline" style="margin-top:8px">
+          <label class="muted">Отступы Л,В,П,Н:</label>
+          <input id="pads" type="text" value="1,0.6,0.8,0.6" style="max-width:220px"/>
+          <label class="muted">Правый стоп, % ширины:</label>
+          <input id="right" type="range" min="55" max="85" step="1" value="70"/>
+          <span id="rightVal" class="pill">70%</span>
+        </div>
+        <div class="inline" style="margin-top:8px">
+          <input id="font" type="file" accept=".ttf,.otf" />
+          <span class="muted">По умолчанию берём <code>./arial.ttf</code> из репозитория, иначе DejaVuSans.</span>
+        </div>
+      </details>
     </section>
-    <aside class="card">
+
+    <section class="card">
       <h2>Предпросмотр</h2>
-      <div id="preview" class="preview">Пока пусто…</div>
-    </aside>
+      <div class="previewBox"><canvas id="preview"></canvas></div>
+      <div class="muted" style="margin-top:8px">Клик по превью — открыть в большом размере.</div>
+    </section>
   </div>
+
   <section class="card" style="margin-top:14px">
-    <h2>Результат</h2>
-    <div id="result" class="preview"></div>
-    <div class="footer">
-      <a id="dlPdf" class="btn" download style="display:none">Скачать PDF</a>
-      <span class="pill">Работает прямо в браузере. Подходит для GitHub Pages.</span>
-    </div>
+    <h2>Результаты</h2>
+    <div id="filesOut" class="files"></div>
   </section>
 </div>
-<div id="modal"><canvas></canvas></div>
 
-<!-- libs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+<div id="lightbox" class="lightbox" title="Кликните, чтобы закрыть"><canvas id="zoom"></canvas></div>
+
+<!-- Библиотеки -->
+<script src="https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.js';</script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.js"></script>
+
 <script>
 const $=s=>document.querySelector(s);
-const drop=$('#drop'),fileInput=$('#file'),runBtn=$('#run'),statusEl=$('#status'),preview=$('#preview'),result=$('#result'),textEl=$('#text'),dlPdf=$('#dlPdf'),modal=$('#modal'),modalCanvas=modal.querySelector('canvas');
-let files=[];
+const drop=$('#drop'), fileInput=$('#file'), run=$('#run'), statusEl=$('#status');
+const textEl=$('#text'), padsEl=$('#pads'), rightEl=$('#right'), rightVal=$('#rightVal');
+const fontInput=$('#font');
+const previewCanvas=$('#preview');
+const filesOut=$('#filesOut');
+const lightbox=$('#lightbox'), zoomCanvas=$('#zoom');
 
-;['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag');}));
-;['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('drag');}));
-drop.addEventListener('drop',e=>{files=[...e.dataTransfer.files].filter(f=>f.type==='application/pdf');onFiles();});
-fileInput.addEventListener('change',e=>{files=[...e.target.files].filter(f=>f.type==='application/pdf');onFiles();});
+let files=[], customFontBytes=null;
+rightEl.addEventListener('input',()=> rightVal.textContent=rightEl.value+'%');
+fontInput.addEventListener('change', async e=>{ customFontBytes=null; if(e.target.files[0]) customFontBytes=new Uint8Array(await e.target.files[0].arrayBuffer());});
+
+// Drag&drop
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>{files=[...e.dataTransfer.files].filter(f=>f.type==='application/pdf'); onFiles();});
+fileInput.addEventListener('change',e=>{files=[...e.target.files].filter(f=>f.type==='application/pdf'); onFiles();});
 
 function onFiles(){
-  if(files.length){statusEl.textContent=`Выбрано: ${files.length}`;runBtn.disabled=false;makePreview(files[0]);}
-  else{statusEl.textContent='Файлы не загружены';runBtn.disabled=true;preview.innerHTML='Пока пусто…';}}
-
-async function makePreview(file){
-  const arr=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:arr}).promise;
-  const page=await pdf.getPage(1);
-  const viewport=page.getViewport({scale:0.8});
-  const canvas=document.createElement('canvas');
-  const ctx=canvas.getContext('2d');
-  canvas.width=viewport.width;canvas.height=viewport.height;
-  await page.render({canvasContext:ctx,viewport}).promise;
-  preview.innerHTML='';preview.appendChild(canvas);
-  preview.onclick=()=>{
-    modal.style.display='flex';
-    modalCanvas.width=viewport.width*2;
-    modalCanvas.height=viewport.height*2;
-    page.render({canvasContext:modalCanvas.getContext('2d'),viewport:page.getViewport({scale:1.6})});
-  }
+  if(!files.length){ statusEl.textContent='Файлы не загружены'; run.disabled=true; previewCanvas.width=0; previewCanvas.height=0; return; }
+  statusEl.textContent=`Выбрано: ${files.length}`; run.disabled=false; renderPreview(files[0], previewCanvas, 0.9);
 }
-modal.onclick=()=>{modal.style.display='none';}
 
-runBtn.addEventListener('click',async()=>{
-  result.textContent='Работаю…';
-  const f=files[0];
-  if(!f){result.textContent='Нет файла';return;}
-  const inBytes=new Uint8Array(await f.arrayBuffer());
-  const pdfDoc=await PDFLib.PDFDocument.load(inBytes);
-  const font=await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-  for(const page of pdfDoc.getPages()){
-    const {width,height}=page.getSize();
-    page.drawRectangle({x:50,y:height-200,width:width*0.6,height:60,color:PDFLib.rgb(1,1,1)});
-    page.drawText(textEl.value,{x:52,y:height-190,size:7,font,color:PDFLib.rgb(0,0,0)});
+async function renderPreview(file, canvas, scaleCap=1){
+  const arr = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({data:arr}).promise; const page = await pdf.getPage(1);
+  const v1 = page.getViewport({scale:1});
+  const scale = Math.min(scaleCap, (canvas.parentElement.clientWidth-12)/v1.width);
+  const vp = page.getViewport({scale: scale});
+  canvas.width = vp.width; canvas.height = vp.height;
+  const ctx = canvas.getContext('2d'); await page.render({canvasContext:ctx, viewport:vp}).promise;
+}
+
+// Лайтбокс увеличения превью
+previewCanvas.addEventListener('click', async ()=>{
+  if(!files.length) return;
+  lightbox.classList.add('show');
+  await renderPreview(files[0], zoomCanvas, 3); // сильно крупнее
+});
+lightbox.addEventListener('click', ()=> lightbox.classList.remove('show'));
+
+// Нормализация текста (для поиска маркеров)
+const norm = s=>s.toLowerCase().replace(/\s+/g,'').replace(/[.,:;!?\-–—"'«»()]+/g,'').replace('странапроисхождения','странпроисх').replace('датаизготовления','датаизготов');
+
+async function loadFontBytes(){
+  if (customFontBytes) return customFontBytes;
+  try{ const r = await fetch('./arial.ttf'); if(r.ok) return new Uint8Array(await r.arrayBuffer()); }catch(e){}
+  // запасной шрифт
+  const r2 = await fetch('https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts-ttf@version_2_37/ttf/DejaVuSans.ttf');
+  return new Uint8Array(await r2.arrayBuffer());
+}
+
+function wrapWords(font, text, maxW, fs){
+  const words=text.split(/\s+/), lines=[]; let cur=''; const w=t=>font.widthOfTextAtSize(t,fs);
+  for(const wd of words){ const cand=(cur?cur+' ':'')+wd; if(w(cand)<=maxW){cur=cand;} else { if(cur) lines.push(cur); cur=wd; } }
+  if(cur) lines.push(cur); return lines;
+}
+
+run.addEventListener('click', async ()=>{
+  if(!files.length) return;
+  run.disabled=true; statusEl.textContent='Обрабатываю…'; filesOut.innerHTML='';
+
+  const pads = padsEl.value.split(',').map(x=>parseFloat(x.trim()||'0')); const [padL,padT,padR,padB] = pads.length===4?pads:[1,0.6,0.8,0.6];
+  const rightPct = Math.max(55, Math.min(85, parseFloat(rightEl.value)||70)) / 100;
+  const fontBytes = await loadFontBytes();
+
+  for(const f of files){
+    const inBytes = new Uint8Array(await f.arrayBuffer());
+
+    // 1) PDF.js для чтения текста и координат
+    const jsdoc = await pdfjsLib.getDocument({data:inBytes}).promise;
+    const editDoc = await PDFLib.PDFDocument.load(inBytes);
+
+    // fontkit обязателен для встраивания TTF
+    editDoc.registerFontkit(fontkit);
+    const font = await editDoc.embedFont(fontBytes, { subset:true });
+
+    for(let i=0;i<editDoc.getPageCount();i++){
+      const p = await jsdoc.getPage(i+1);
+      const content = await p.getTextContent();
+      const viewport = p.getViewport({scale:1});
+      const items = content.items.map(it=>({
+        str:it.str, x:it.transform[4], yTop:it.transform[5], w:it.width, h:it.height,
+        yBottom: it.transform[5]-it.height, norm: norm(it.str)
+      }));
+      const page = editDoc.getPage(i); const [pw,ph]=page.getSize();
+      const toPtX = v => v * (pw/viewport.width); const toPtY = v => v * (ph/viewport.height);
+
+      // ищем «Изготовитель/Производитель» и ближайший маркер конца блока
+      const start = items.find(it=> it.norm.includes('изготов') || it.norm.includes('производ'));
+      if(!start) continue;
+      const below = items.filter(it=> it.yBottom < start.yBottom - 2);
+      const endMarkers = ['Состав:','Страна происхождения:','Дата изготовления:','Соответствует требованиям ТР ТС'];
+      const endItem = below.find(it => endMarkers.some(m => it.str.includes(m)));
+      const endY = endItem ? endItem.yTop : (start.yTop - 24);
+
+      const xLeft = start.x, yTop = start.yTop, yBottom = endY;
+      const usableRight = viewport.width * rightPct;
+      let xRight = xLeft + 92;
+      for(const it of items){
+        if(it.yTop <= yTop && it.yTop >= yBottom && it.x >= xLeft-6 && it.x <= xLeft+36) xRight = Math.max(xRight, it.x + it.w);
+      }
+      xRight = Math.min(xRight, xLeft+230, usableRight);
+
+      const rect = { x0: toPtX(xLeft), y0: toPtY(viewport.height - yTop), x1: toPtX(xRight), y1: toPtY(viewport.height - yBottom) };
+
+      // затираем старый блок
+      page.drawRectangle({x:rect.x0, y:rect.y0, width:rect.x1-rect.x0, height:rect.y1-rect.y0, color:PDFLib.rgb(1,1,1)});
+
+      // печатаем новый
+      const inner = { x:rect.x0+padL, y:rect.y0+padB, w:(rect.x1-rect.x0)-padL-padR, h:(rect.y1-rect.y0)-padT-padB };
+      const zone = items.filter(it=> it.yTop<=yTop && it.yTop>=yBottom && it.str.length>2);
+      const hs = zone.map(z=>z.h).sort((a,b)=>a-b); const basePx = hs[hs.length>>1] || 11; let fs = toPtY(basePx) * 1.02; fs = Math.max(3.6, Math.min(7.2, fs));
+
+      let lines = wrapWords(font, (textEl.value||'').trim(), inner.w, fs);
+      const lineH = fs*1.12; let needed = lines.length*lineH;
+      if(needed>inner.h){ const k=Math.sqrt(inner.h/needed); fs=Math.max(3.4, fs*k); lines=wrapWords(font, (textEl.value||'').trim(), inner.w, fs); }
+
+      let y = inner.y + (inner.h - lines.length*lineH)/2 + (lineH - fs)*0.72;
+      for(const ln of lines){ page.drawText(ln,{x:inner.x,y, size:fs, font, color:PDFLib.rgb(0,0,0)}); y+=lineH; }
+    }
+
+    const outBytes = await editDoc.save();
+    const blob = new Blob([outBytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const card = document.createElement('div'); card.className='fileCard';
+    card.innerHTML = `<div class="muted">${f.name}</div><a class="btn" href="${url}" download="${f.name.replace(/\.pdf$/i,'_edited.pdf')}">Скачать PDF</a>`;
+    filesOut.appendChild(card);
+
+    // для предпросмотра результата — перерендерим канвас
+    if(f===files[0]){
+      const fakeFile = new File([blob], 'preview.pdf', {type:'application/pdf'});
+      await renderPreview(fakeFile, previewCanvas, 1.2);
+    }
   }
-  const outBytes=await pdfDoc.save();
-  const blob=new Blob([outBytes],{type:'application/pdf'});
-  const url=URL.createObjectURL(blob);
-  dlPdf.href=url;dlPdf.download=f.name.replace(/\.pdf$/i,'_edited.pdf');
-  dlPdf.style.display='inline-block';
-  result.innerHTML='Готово: скачайте PDF';
+
+  run.disabled=false; statusEl.textContent='Готово';
 });
 </script>
 </body>
