@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Замена блока «Изготовитель» в PDF (клиентски, без сервера)</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; }
+    html,body{height:100%}
+    body{margin:0;font:15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;background:var(--bg);color:var(--ink);}
+    header{padding:18px 20px;border-bottom:1px solid #1f2937;background:#0b1220;position:sticky;top:0;z-index:5}
+    h1{margin:0;font-size:18px}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px;}
+    .row{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    label{display:block;margin:10px 0 6px;color:var(--muted)}
+    input[type="text"],input[type="number"],textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #30363d;background:#0d1322;color:#e5e7eb}
+    textarea{min-height:70px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .btn{appearance:none;background:var(--accent);color:#00111f;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .drop{border:2px dashed #374151;border-radius:16px;padding:18px;text-align:center;color:#9ca3af}
+    .drop.drag{border-color:#60a5fa;background:rgba(96,165,250,.06)}
+    .small{font-size:12px;color:#9ca3af}
+    .preview{max-height:280px;overflow:auto;border:1px dashed #374151;border-radius:12px;padding:8px;background:#0b1220}
+    .footer{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+    .pill{background:#0b1220;border:1px solid #1f2937;border-radius:999px;padding:6px 10px;color:#9ca3af}
+    canvas{max-width:100%}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;background:#0b1220;border:1px solid #1f2937;border-radius:8px;padding:2px 6px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>PDF-редактор стикеров: замена блока «Изготовитель» (работает локально, прямо в браузере)</h1>
+</header>
+<div class="wrap">
+  <div class="row">
+    <section class="card">
+      <h2>1) Загрузите PDF стикеры</h2>
+      <div id="drop" class="drop">Перетащите PDF-файлы сюда или <label for="file" class="kbd">выберите…</label>
+        <input id="file" type="file" accept="application/pdf" multiple style="display:none" />
+      </div>
+
+      <h2 style="margin-top:18px">2) Настройки поиска и вёрстки</h2>
+      <div class="grid">
+        <div>
+          <label>Новый текст</label>
+          <textarea id="text">Изготовитель: Guangzhou Anrong Trading Co., Ltd. Китай, Room 2310A, 23F, No. 179, Tianhe North Road, Tianhe District, Guangzhou</textarea>
+        </div>
+        <div>
+          <label>Шрифт (TTF) — опционально (по умолчанию Noto Sans)</label>
+          <input type="file" id="font" accept=".ttf,.otf" />
+          <div class="small" style="margin-top:6px">Совет: arial.ttf или любой другой TTF. Если не выбрать — подгружается NotoSans-Regular.ttf.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label>Макс. правая граница % ширины страницы (ограничитель под QR)</label>
+          <input type="number" id="rightLimitPct" value="70" min="50" max="90" step="1" />
+        </div>
+        <div>
+          <label>Отступы внутри рамки (Л/В/П/Н) в pt</label>
+          <input type="text" id="pads" value="1,0.6,0.8,0.6" />
+          <div class="small">Формат: left,top,right,bottom</div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label>Кегль авто-базовый × множитель</label>
+          <input type="number" id="fsMul" value="1.02" step="0.02" />
+        </div>
+        <div>
+          <label>Маркеры окончания блока (через |)</label>
+          <input type="text" id="endMarkers" value="Состав:|Страна происхождения:|Дата изготовления:|Соответствует требованиям ТР ТС" />
+        </div>
+      </div>
+
+      <div class="footer">
+        <button id="run" class="btn" disabled>Запустить обработку</button>
+        <span id="status" class="pill">Файлы не загружены</span>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h2>Предпросмотр 1‑й страницы выбранного файла</h2>
+      <div id="preview" class="preview">Пока пусто…</div>
+      <div class="small" style="margin-top:8px">
+        Приложение использует <b>PDF.js</b> для парсинга текста (чтобы найти блок «Изготовитель»)
+        и <b>pdf-lib</b> для перезаписи PDF: мы закрашиваем исходный блок белым прямоугольником
+        и рисуем новый текст (векторно) с выбранным TTF.
+      </div>
+    </aside>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Результат</h2>
+    <div id="result" class="preview"></div>
+    <div class="footer">
+      <a id="dlZip" class="btn" download style="display:none">Скачать ZIP</a>
+      <span class="pill">Работает целиком в браузере, без сервера. Подходит для GitHub Pages.</span>
+    </div>
+  </section>
+</div>
+
+<!-- libs via CDN -->
+<script src="https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+  const $ = sel => document.querySelector(sel);
+  const drop = $('#drop');
+  const fileInput = $('#file');
+  const runBtn = $('#run');
+  const statusEl = $('#status');
+  const preview = $('#preview');
+  const result = $('#result');
+  const textEl = $('#text');
+  const fontInput = $('#font');
+  const rightLimitPctEl = $('#rightLimitPct');
+  const padsEl = $('#pads');
+  const fsMulEl = $('#fsMul');
+  const endMarkersEl = $('#endMarkers');
+  const dlZip = $('#dlZip');
+
+  // PDF.js worker (same CDN)
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.js';
+
+  let files = [];
+  let customFontBytes = null;
+
+  fontInput.addEventListener('change', async (e) => {
+    customFontBytes = null;
+    if (e.target.files && e.target.files[0]) {
+      customFontBytes = new Uint8Array(await e.target.files[0].arrayBuffer());
+    }
+  });
+
+  function human(n){return new Intl.NumberFormat('ru-RU').format(n)}
+
+  // Drag&drop
+  ;['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, (e)=>{e.preventDefault(); drop.classList.add('drag');}))
+  ;['dragleave','drop'].forEach(evt => drop.addEventListener(evt, (e)=>{e.preventDefault(); drop.classList.remove('drag');}))
+  drop.addEventListener('drop', (e)=>{files = [...e.dataTransfer.files].filter(f=>f.type==='application/pdf'); onFiles();})
+  fileInput.addEventListener('change', (e)=>{files = [...e.target.files].filter(f=>f.type==='application/pdf'); onFiles();})
+
+  function onFiles(){
+    if (files.length){
+      statusEl.textContent = `Выбрано файлов: ${files.length}`;
+      runBtn.disabled = false;
+      makePreview(files[0]);
+    } else {
+      statusEl.textContent = 'Файлы не загружены';
+      runBtn.disabled = true;
+      preview.innerHTML = 'Пока пусто…';
+    }
+  }
+
+  async function makePreview(file){
+    const arr = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:arr}).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({scale: 0.8});
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({canvasContext:ctx, viewport}).promise;
+    preview.innerHTML=''; preview.appendChild(canvas);
+  }
+
+  function norm(s){
+    return s.toLowerCase().replace(/\s+/g,'').replace(/[.,:;!?\-–—"'«»()]+/g,'')
+      .replace('странапроисхождения','странпроисх').replace('датаизготовления','датаизготов');
+  }
+
+  async function ensureDefaultFont(){
+    if (customFontBytes) return customFontBytes;
+    // Noto Sans Regular TTF (Google Fonts) — кэшируем через fetch
+    const url = 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNr6DR8.woff2';
+    // pdf-lib умеет только TTF/OTF; сконвертируем на лету woff2 -> нельзя.
+    // Поэтому держим очень маленький встроенный TTF как резерв.
+    // Возьмём DejaVuSans (микро-TTF) с CDN
+    const ttfUrl = 'https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts-ttf@version_2_37/ttf/DejaVuSans.ttf';
+    const res = await fetch(ttfUrl);
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  // Основной процесс
+  runBtn.addEventListener('click', async ()=>{
+    result.textContent = 'Работаю…';
+    const zip = new JSZip();
+    const pads = padsEl.value.split(',').map(x=>parseFloat(x.trim()||'0'));
+    const [padL, padT, padR, padB] = pads.length===4?pads:[1,0.6,0.8,0.6];
+    const rightLimitPct = Math.max(50, Math.min(90, parseFloat(rightLimitPctEl.value)||70)) / 100;
+    const endMarkers = endMarkersEl.value.split('|').map(s=>s.trim()).filter(Boolean);
+
+    const fontBytes = await ensureDefaultFont();
+
+    for (const f of files){
+      const inBytes = new Uint8Array(await f.arrayBuffer());
+
+      // 1) читаем через PDF.js для анализа текста
+      const doc = await pdfjsLib.getDocument({data: inBytes}).promise;
+
+      // 2) готовим pdf-lib для модификации
+      const pdfDoc = await PDFLib.PDFDocument.load(inBytes);
+      const embeddedFont = await pdfDoc.embedFont(fontBytes, {subset:true});
+
+      for (let i=0;i<pdfDoc.getPageCount();i++){
+        const page = await doc.getPage(i+1);
+        const content = await page.getTextContent();
+        const viewport = page.getViewport({scale:1});
+        const items = content.items.map(it=>{
+          // PDF.js координаты: x,y — в CSS пикселях относительно viewport
+          const tx = PDFLib.Matrix.ofArray(it.transform);
+          const x = it.transform[4];
+          const yTop = it.transform[5];
+          const w = it.width;
+          const h = it.height;
+          return {str: it.str, x, yTop, w, h, yBottom: yTop - h, norm: norm(it.str)};
+        });
+
+        // Размер страницы в pt (pdf-lib)
+        const pageLib = pdfDoc.getPage(i);
+        const [pw, ph] = pageLib.getSize();
+        const viewportW = viewport.width, viewportH = viewport.height;
+        const toPtX = v => v * (pw/viewportW);
+        const toPtY = v => v * (ph/viewportH);
+
+        // Находим старт: «Изготов…» / «Производ…»
+        const start = items.find(it => it.norm.includes('изготов') || it.norm.includes('производ'));
+        // Находим конец — первый маркер ниже по Y
+        let endY = null;
+        if (start){
+          const below = items.filter(it => it.yBottom < start.yBottom - 2);
+          const endItem = below.find(it => endMarkers.some(m=> it.str.includes(m)));
+          endY = endItem ? endItem.yTop : (start.yTop - 24); // запас
+        }
+
+        if (!start){
+          // если не нашли — пропускаем страницу
+          continue;
+        }
+
+        // рамка в пикселях viewport
+        const xLeft = start.x;
+        const yTop = start.yTop;
+        const yBottom = endY ?? (start.yTop - 24);
+        const usableRight = viewportW * rightLimitPct;
+        // ширина по наблюдаемым строкам в этом диапазоне слева
+        let xRight = xLeft + 92; // минималка
+        for (const it of items){
+          if (it.yTop <= yTop && it.yTop >= yBottom && it.x >= xLeft - 6 && it.x <= xLeft + 36){
+            xRight = Math.max(xRight, it.x + it.w);
+          }
+        }
+        xRight = Math.min(xRight, xLeft + 230, usableRight);
+
+        // в pt
+        let rect = {
+          x0: toPtX(xLeft), y0: toPtY(viewportH - yTop),
+          x1: toPtX(xRight), y1: toPtY(viewportH - yBottom)
+        };
+
+        // белая заливка старого блока
+        pageLib.drawRectangle({
+          x: rect.x0, y: rect.y0, width: rect.x1-rect.x0, height: rect.y1-rect.y0,
+          color: PDFLib.rgb(1,1,1), borderColor: PDFLib.rgb(1,1,1), borderWidth: 0,
+        });
+
+        // авто-оценка базового кегля (по среднему высоте найденных спанов)
+        const sampleHeights = items.filter(it=> it.yTop<=yTop && it.yTop>=yBottom && it.str.length>2).map(it=>it.h);
+        let fsPx = sampleHeights.length ? sampleHeights.sort((a,b)=>a-b)[Math.floor(sampleHeights.length/2)] : 11;
+        let fsPt = toPtY(fsPx) * parseFloat(fsMulEl.value || '1.02');
+        fsPt = Math.max(3.6, Math.min(7.2, fsPt));
+
+        const text = textEl.value.trim();
+
+        // паддинги
+        const inner = {
+          x: rect.x0 + padL,
+          y: rect.y0 + padB,
+          w: (rect.x1 - rect.x0) - padL - padR,
+          h: (rect.y1 - rect.y0) - padT - padB,
+        };
+
+        // Упрощённый перенос по словам в pt
+        function measure(text){ return embeddedFont.widthOfTextAtSize(text, fsPt); }
+        const words = text.split(/\s+/);
+        const lines = [];
+        let cur = '';
+        for (const w of words){
+          const cand = (cur ? cur+' ' : '') + w;
+          if (measure(cand) <= inner.w){ cur = cand; }
+          else { if (cur) lines.push(cur); cur = w; }
+        }
+        if (cur) lines.push(cur);
+
+        const lineH = fsPt * 1.12;
+        const neededH = lines.length * lineH;
+        if (neededH > inner.h){
+          // уменьшить кегль до влезания
+          const k = Math.sqrt(inner.h/neededH);
+          fsPt = Math.max(3.4, fsPt * Math.min(1, k));
+        }
+
+        // Пересчитать ширины и печатать
+        const drawLines = [];
+        let yCursor = inner.y + (inner.h - lines.length*lineH)/2 + (lineH - fsPt)*0.72; // лёгкий визуальный центр
+        for (const ln of lines){
+          drawLines.push({text: ln, x: inner.x, y: yCursor});
+          yCursor += lineH;
+        }
+
+        for (const L of drawLines){
+          pageLib.drawText(L.text, { x: L.x, y: L.y, size: fsPt, font: embeddedFont, color: PDFLib.rgb(0,0,0)});
+        }
+      }
+
+      const outBytes = await pdfDoc.save();
+      zip.file(f.name.replace(/\.pdf$/i,'_edited.pdf'), outBytes);
+    }
+
+    const zipBlob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(zipBlob);
+    dlZip.href = url; dlZip.download = 'edited_stickers.zip'; dlZip.style.display='inline-block';
+    result.innerHTML = 'Готово: можно скачать ZIP с обработанными файлами.';
+  });
+</script>
+</body>
+</html>
