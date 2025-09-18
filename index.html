@@ -20,15 +20,17 @@
     .drop{border:2px dashed #374151;border-radius:14px;padding:16px;text-align:center;color:#9ca3af}
     .drop.drag{border-color:#60a5fa;background:rgba(96,165,250,.06)}
     .small{font-size:12px;color:#9ca3af}
-    .preview{max-height:280px;overflow:auto;border:1px dashed #374151;border-radius:12px;padding:6px;background:#0b1220;text-align:center}
+    .preview{max-height:280px;overflow:hidden;border:1px dashed #374151;border-radius:12px;padding:6px;background:#0b1220;text-align:center;cursor:pointer}
     .footer{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .pill{background:#0b1220;border:1px solid #1f2937;border-radius:999px;padding:6px 10px;color:#9ca3af;font-size:12px}
     canvas{max-width:100%;height:auto}
+    #modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;z-index:9999}
+    #modal canvas{max-width:95%;max-height:95%;box-shadow:0 0 20px black}
   </style>
 </head>
 <body>
 <header>
-  <h1>Стикер-PDF Fix — замена «Изготовитель» (GitHub Pages, без сервера)</h1>
+  <h1>Стикер-PDF Fix — замена «Изготовитель»</h1>
 </header>
 <div class="wrap">
   <div class="row">
@@ -40,7 +42,7 @@
       <h2 style="margin-top:14px">2) Новый текст</h2>
       <textarea id="text">Изготовитель: Guangzhou Anrong Trading Co., Ltd. Китай, Room 2310A, 23F, No. 179, Tianhe North Road, Tianhe District, Guangzhou</textarea>
       <div class="footer">
-        <button id="run" class="btn" disabled>Обработать и скачать ZIP</button>
+        <button id="run" class="btn" disabled>Обработать и скачать PDF</button>
         <span id="status" class="pill">Файлы не загружены</span>
       </div>
     </section>
@@ -53,20 +55,20 @@
     <h2>Результат</h2>
     <div id="result" class="preview"></div>
     <div class="footer">
-      <a id="dlZip" class="btn" download style="display:none">Скачать ZIP</a>
+      <a id="dlPdf" class="btn" download style="display:none">Скачать PDF</a>
       <span class="pill">Работает прямо в браузере. Подходит для GitHub Pages.</span>
     </div>
   </section>
 </div>
+<div id="modal"><canvas></canvas></div>
 
 <!-- libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const drop=$('#drop'),fileInput=$('#file'),runBtn=$('#run'),statusEl=$('#status'),preview=$('#preview'),result=$('#result'),textEl=$('#text'),dlZip=$('#dlZip');
+const drop=$('#drop'),fileInput=$('#file'),runBtn=$('#run'),statusEl=$('#status'),preview=$('#preview'),result=$('#result'),textEl=$('#text'),dlPdf=$('#dlPdf'),modal=$('#modal'),modalCanvas=modal.querySelector('canvas');
 let files=[];
 
 ;['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag');}));
@@ -88,28 +90,33 @@ async function makePreview(file){
   canvas.width=viewport.width;canvas.height=viewport.height;
   await page.render({canvasContext:ctx,viewport}).promise;
   preview.innerHTML='';preview.appendChild(canvas);
+  preview.onclick=()=>{
+    modal.style.display='flex';
+    modalCanvas.width=viewport.width*2;
+    modalCanvas.height=viewport.height*2;
+    page.render({canvasContext:modalCanvas.getContext('2d'),viewport:page.getViewport({scale:1.6})});
+  }
 }
+modal.onclick=()=>{modal.style.display='none';}
 
 runBtn.addEventListener('click',async()=>{
   result.textContent='Работаю…';
-  const zip=new JSZip();
-  const fontBytes=await fetch('https://raw.githubusercontent.com/google/fonts/main/apache/arial/Arial-Regular.ttf').then(r=>r.arrayBuffer()).catch(()=>null);
-  for(const f of files){
-    const inBytes=new Uint8Array(await f.arrayBuffer());
-    const pdfDoc=await PDFLib.PDFDocument.load(inBytes);
-    const font= fontBytes? await pdfDoc.embedFont(fontBytes): await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-    for(const page of pdfDoc.getPages()){
-      const {width,height}=page.getSize();
-      page.drawRectangle({x:50,y:height-200,width:width*0.6,height:60,color:PDFLib.rgb(1,1,1)});
-      page.drawText(textEl.value,{x:52,y:height-190,size:7,font,color:PDFLib.rgb(0,0,0)});
-    }
-    const outBytes=await pdfDoc.save();
-    zip.file(f.name.replace(/\.pdf$/i,'_edited.pdf'),outBytes);
+  const f=files[0];
+  if(!f){result.textContent='Нет файла';return;}
+  const inBytes=new Uint8Array(await f.arrayBuffer());
+  const pdfDoc=await PDFLib.PDFDocument.load(inBytes);
+  const font=await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  for(const page of pdfDoc.getPages()){
+    const {width,height}=page.getSize();
+    page.drawRectangle({x:50,y:height-200,width:width*0.6,height:60,color:PDFLib.rgb(1,1,1)});
+    page.drawText(textEl.value,{x:52,y:height-190,size:7,font,color:PDFLib.rgb(0,0,0)});
   }
-  const zipBlob=await zip.generateAsync({type:'blob'});
-  const url=URL.createObjectURL(zipBlob);
-  dlZip.href=url;dlZip.download='edited_stickers.zip';dlZip.style.display='inline-block';
-  result.innerHTML='Готово: скачайте ZIP';
+  const outBytes=await pdfDoc.save();
+  const blob=new Blob([outBytes],{type:'application/pdf'});
+  const url=URL.createObjectURL(blob);
+  dlPdf.href=url;dlPdf.download=f.name.replace(/\.pdf$/i,'_edited.pdf');
+  dlPdf.style.display='inline-block';
+  result.innerHTML='Готово: скачайте PDF';
 });
 </script>
 </body>
